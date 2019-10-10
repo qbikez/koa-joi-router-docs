@@ -42,6 +42,50 @@ describe('API', function () {
     assert(['info', 'basePath', 'swagger', 'paths', 'tags'].every(v => v in spec))
   })
 
+  it('should consider route parameters', function () {
+    const generator = new SwaggerAPI()
+    const router = Router()
+
+    router.get('/:action/:id/', {
+      meta: {
+        swagger: {
+          summary: 'User Signup',
+          parameters: [
+            { name: 'action', description: 'action to take' }
+          ]
+        }
+      },
+      validate: {
+        type: 'json',
+        body: {
+          username: Joi.string().alphanum().min(3).max(30).required()
+        },
+        output: {
+          200: {
+            body: {
+              userId: Joi.string().description('Newly created user id')
+            }
+          }
+        }
+      },
+      handler: async () => {}
+    })
+
+    generator.addJoiRouter(router)
+    const spec = generator.generateSpec({
+      info: {
+        title: 'Example API',
+        version: '1.1'
+      },
+      basePath: '/'
+    })
+    assert(['/{action}/{id}/'].every( r => r in spec.paths))
+    let path = spec.paths['/{action}/{id}/'].get
+    assert(['action', 'id'].every( r => path.parameters.map(p => p.name).includes(r)))
+    assert('action to take' === path.parameters.find(p => p.name === 'action').description)
+    assert(path.parameters.length == 2)
+  })
+
   it('should success with empty default response', function () {
     const generator = new SwaggerAPI()
     const router = Router()
